@@ -11,15 +11,13 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Customer
-        # fields = [ 'name', 'email', 'phone']
-        fields='__all__'
+        fields = [ 'id','user', 'address', 'phone']
+       
 
 def create(self, validated_data):
-        # Ensure that 'user' is included in validated_data
+  
         if 'user' not in validated_data:
             raise serializers.ValidationError({"user": "User ID is required."})
-
-        # Create the Customer instance with validated data
         customer = Customer.objects.create(**validated_data)
         return customer
 
@@ -38,7 +36,16 @@ class CartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = "__all__"  # Serialize all fields of CartItem
 
-class OrderSerializer(serializers.ModelSerializer):
+class CartSerializer(serializers.ModelSerializer):
+    # You can include CartItems in the CartSerializer if you want to list all items in the cart
+    cart_items = CartItemSerializer(many=True, read_only=True)  # Nested CartItem serializer
+
     class Meta:
-        model = Order
-        fields = "__all__"  # Serialize all fields of Order
+        model = Cart
+        fields = ['id', 'user', 'cart_items']  # Include relevant fields of Cart
+
+class OrderSerializer(serializers.ModelSerializer):
+    cart = CartSerializer(read_only=True)  # Include Cart d
+    class Meta:
+         model = Order 
+         fields = '__all__'

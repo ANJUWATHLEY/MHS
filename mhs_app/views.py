@@ -3,15 +3,112 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from mhs_app.models import Customer
 from mhs_app.models import Product
+from mhs_app.models import Order
+from mhs_app.models import Cart
+from mhs_app.models import  CartItem
+
 from mhs_app.serializers import CustomerSerializer
 from mhs_app.serializers import ProductSerializer
+from mhs_app.serializers import OrderSerializer
+from mhs_app.serializers import CartSerializer
+from mhs_app.serializers import CartItemSerializer
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.contrib.auth import authenticate,logout
+# from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
 
 
+@api_view(['POST'])
+def register_view(request):
+    username = request.data.get('username')
+    email = request.data.get('email')
+    password = request.data.get('password')
+    phone = request.data.get('phone')
+    address = request.data.get('address')
+    first_name = request.data.get('first_name', '')
+    last_name = request.data.get('last_name', '')
+
+
+    if not all([username, email, password]):
+        return Response({"error": "All fields are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+    try:
+        validate_password(password)
+    except ValidationError as e:
+        return Response({"error": e.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Create the user
+    if Customer.objects.filter(username=username).exists():
+        return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
+    if Customer.objects.filter(email=email).exists():
+        return Response({"error": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = Customer.objects.create_user(
+        username=username,
+        email=email,
+        password=password,
+        phone=phone,
+        address=address,
+        first_name=first_name,
+        last_name=last_name
+    )
+
+    return Response({"message": "User registered successfully!"}, status=status.HTTP_201_CREATED)
+
+
+# @api_view(['POST'])
+# def login_view(request):
+#     username = request.data.get('username')
+#     password = request.data.get('password')
+
+#     if not username or not password:
+#         return Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+#     user = authenticate(username=username, password=password)
+#     if user:
+#         refresh = RefreshToken.for_user(user)
+#         access_token = refresh.access_token
+
+#         return Response({
+#             "message": "Login successful",
+#             "refresh": str(refresh),
+#             "access": str(access_token),
+#             "user_info": {
+#                 "id": user.id,
+#                 "username": user.username,
+#                 "email": user.email,
+#                 "contact": user.contact,
+#                 "address": user.address,
+#             }
+#         }, status=status.HTTP_200_OK)
+#     else:
+#         return Response({"error": "Invalid username or password"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+# def logout_view(request):
+#     try:
+#         refresh_token = request.data.get("refresh_token")
+#         if not refresh_token:
+#             return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         token = RefreshToken(refresh_token)
+#         token.blacklist()
+#         logout(request)
+#         return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
 @api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 def Customer_view(request, id=None):
     if request.method == 'GET':
         customers = Customer.objects.all()
         customer_serializer = CustomerSerializer(customers, many=True)
+        # variable_name = SerializerName(object_or_queryset, many=True/False)
+
         return Response(customer_serializer.data)
     
     elif request.method == 'POST':
@@ -51,7 +148,7 @@ def Customer_view(request, id=None):
 def product_view(request, id=None):
     if request.method == 'GET':
         products = Product.objects.all()
-        product_serializer = ProductSerializer(products, many=True)
+        product_serializer = ProductSerializer(products, many=True, context={"request":request})
         return Response(product_serializer.data)
     
     elif request.method == 'POST':
@@ -62,17 +159,18 @@ def product_view(request, id=None):
         else:
             return Response(serializer.errors)
     
+   
     elif request.method == 'DELETE':
-        try:
-            product = Product.objects.get(id=id)
-            product.delete()
-            return Response({"message": "Deleted successfully"})
-        except Product.DoesNotExist:
-            return Response({"error": "Product not found"}, status=404)
+        product = Product.objects.get(product_id=id)
+        product.delete()
+        return Response({"message": "Deleted successfully"})
+
+
+
     
     elif request.method == 'PUT':
         try:
-            product = Product.objects.get(id=id)
+            product = Product.objects.get(product_id=id)
             serializer = ProductSerializer(product, data=request.data)
             if serializer.is_valid():
                 serializer.save()
@@ -84,7 +182,7 @@ def product_view(request, id=None):
     
     elif request.method == 'PATCH':
         try:
-            product = Product.objects.get(id=id)
+            product = Product.objects.get(product_id=id)
             serializer = ProductSerializer(product, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -93,3 +191,137 @@ def product_view(request, id=None):
                 return Response(serializer.errors)
         except Product.DoesNotExist:
             return Response({"error": "Product not found"}, status=404)
+
+
+@api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+def order_view(request, id=None):
+    if request.method == 'GET':
+        if id:
+            order = Order.objects.get(id=id)  # Fetch single order
+            order_serializer = OrderSerializer(order)
+            return Response(order_serializer.data)
+        else:
+            order = Order.objects.all()  # Fetch all orders
+            order_serializer = OrderSerializer(order, many=True)
+            return Response(order_serializer.data)
+
+    elif request.method == 'POST':
+        serializer = OrderSerializer(data=request.data)  # Create new order
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+    elif request.method == 'PUT':
+        order = Order.objects.get(id=id)  # Update entire order
+        serializer = OrderSerializer(order, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    elif request.method == 'PATCH':
+        order = Order.objects.get(id=id)  # Partial update
+        serializer = OrderSerializer(order, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    elif request.method == 'DELETE':
+        order = Order.objects.get(id=id)  # Delete order
+        order.delete()
+        return Response({"message": "Order deleted successfully"}, status=204)
+
+@api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+def cart_view(request, id=None):
+    if request.method == 'GET':
+        if id:
+            cart = Cart.objects.get(id=id)
+            cart_serializer = CartSerializer(cart)
+            return Response(cart_serializer.data)
+        else:
+            carts = Cart.objects.all()
+            cart_serializer = CartSerializer(carts, many=True)
+            return Response(cart_serializer.data)
+
+    elif request.method == 'POST':
+        serializer = CartSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+    elif request.method == 'PUT':
+        cart = Cart.objects.get(id=id)
+        serializer = CartSerializer(cart, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    elif request.method == 'PATCH':
+        cart = Cart.objects.get(id=id)
+        serializer = CartSerializer(cart, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    elif request.method == 'DELETE':
+        cart = Cart.objects.get(id=id)
+        cart.delete()
+        return Response({"message": "Cart item deleted successfully"}, status=204)
+
+
+    
+
+
+
+
+@api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+def cartitem_view(request, id=None):
+    if request.method == 'GET':
+     cartitem=CartItem.objects.all()
+     cartitem_serializer = CartItemSerializer(cartitem,many=True)
+     return Response(cartitem_serializer.data)
+
+    elif request.method == 'POST':
+        serializer = CartItemSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+
+    elif request.method == 'PUT':
+        try:
+            cartitem = CartItem.objects.get(id=id)
+        except CartItem.DoesNotExist:
+            return Response({"error": "Cart item not found"})
+
+        serializer = CartItemSerializer(cartitem, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+
+    elif request.method == 'PATCH':
+        try:
+            cartitem = CartItem.objects.get(id=id)
+        except CartItem.DoesNotExist:
+            return Response({"error": "Cart item not found"})
+
+        serializer = CartItemSerializer(cartitem, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+
+    elif request.method == 'DELETE':
+        try:
+            cartitem = CartItem.objects.get(id=id)
+        except CartItem.DoesNotExist:
+            return Response({"error": "Cart item not found"})
+
+        cartitem.delete()
+        return Response({"message": "Cart item deleted successfully"})

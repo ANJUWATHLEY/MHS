@@ -39,8 +39,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
      'mhs_app',
      'rest_framework',   
-       
-     'corsheaders'
+    'rest_framework.authtoken',
+     'corsheaders',
+    'knox'
     #  'jwt',
     #  'rest_framework_simplejwt.token_blacklist',
      
@@ -99,26 +100,19 @@ DATABASES = {
     }
 }
 
-# import os
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': [
-#         'rest_framework.authentication.BasicAuthentication',
-#         'rest_framework.authentication.SessionAuthentication',
-#     ] ,
-#     'DEFAULT_FILTER_BACKENDS': [
-#         'django_filters.rest_framework.DjangoFilterBackend',
-#     ]
-# }
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
+        #  'knox.auth.TokenAuthentication',
+    ],
+}
 
-# from datetime import timedelta
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-#     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-#     'ROTATE_REFRESH_TOKENS': False,
-#     'BLACKLIST_AFTER_ROTATION': True,
-#     'AUTH_HEADER_TYPES': ('Bearer',),
-# }
-
+REST_AUTH ={
+    'USE_JWT':True,
+    'JWT_AUTH_COOKIE':'bringit_app_cookie',
+    'JWT_AUTH_REFRESH_COOKIE':'bringit_app_refresh_cookie'
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

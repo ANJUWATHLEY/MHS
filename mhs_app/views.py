@@ -7,18 +7,18 @@ from mhs_app.models import Order
 from mhs_app.models import Cart
 from mhs_app.models import  CartItem
 
-from mhs_app.serializers import CustomerSerializer
-from mhs_app.serializers import ProductSerializer
-from mhs_app.serializers import OrderSerializer
-from mhs_app.serializers import CartSerializer
-from mhs_app.serializers import CartItemSerializer
+from mhs_app.serializers import *
+
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate,logout
 # from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-
+from django.contrib.auth import authenticate, login, logout
+from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.views import APIView
 
 @api_view(['POST'])
 def register_view(request):
@@ -35,73 +35,30 @@ def register_view(request):
         return Response({"error": "All fields are required"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-    try:
-        validate_password(password)
-    except ValidationError as e:
-        return Response({"error": e.messages}, status=status.HTTP_400_BAD_REQUEST)
-
+    
     # Create the user
-    if Customer.objects.filter(username=username).exists():
+    if Customer.objects.filter(user__username=username).exists():
         return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
-    if Customer.objects.filter(email=email).exists():
+    if Customer.objects.filter(user__email=email).exists():
         return Response({"error": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
-    user = Customer.objects.create_user(
+    user = User.objects.create_user(
         username=username,
         email=email,
         password=password,
-        phone=phone,
-        address=address,
         first_name=first_name,
         last_name=last_name
     )
 
+    Customer.objects.create(
+        user=user,
+        phone=phone,
+        address=address
+    )
+
     return Response({"message": "User registered successfully!"}, status=status.HTTP_201_CREATED)
 
-
-# @api_view(['POST'])
-# def login_view(request):
-#     username = request.data.get('username')
-#     password = request.data.get('password')
-
-#     if not username or not password:
-#         return Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-#     user = authenticate(username=username, password=password)
-#     if user:
-#         refresh = RefreshToken.for_user(user)
-#         access_token = refresh.access_token
-
-#         return Response({
-#             "message": "Login successful",
-#             "refresh": str(refresh),
-#             "access": str(access_token),
-#             "user_info": {
-#                 "id": user.id,
-#                 "username": user.username,
-#                 "email": user.email,
-#                 "contact": user.contact,
-#                 "address": user.address,
-#             }
-#         }, status=status.HTTP_200_OK)
-#     else:
-#         return Response({"error": "Invalid username or password"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-# @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
-# def logout_view(request):
-#     try:
-#         refresh_token = request.data.get("refresh_token")
-#         if not refresh_token:
-#             return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         token = RefreshToken(refresh_token)
-#         token.blacklist()
-#         logout(request)
-#         return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
-#     except Exception as e:
-#         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+            
 @api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 def Customer_view(request, id=None):
     if request.method == 'GET':

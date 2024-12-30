@@ -47,15 +47,14 @@ class CartItemSerializer(serializers.ModelSerializer):
         fields =['id','cart','product','quantity','cart_total']  
 
 class CartSerializer(serializers.ModelSerializer):
-   user=serializers.SerializerMethodField()
-#    user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+   user=UserSerializer(read_only=True)
    cart_items=CartItemSerializer(many=True,read_only=True)
    class Meta:
         model = Cart
         fields = ['id', 'user', 'cart_items' ]
 
 class OrderSerializer(serializers.ModelSerializer):
-    cart = CartSerializer(read_only=True)
+    cart = CartSerializer(read_only=True)  # Include Cart d
     class Meta:
          model = Order 
          fields = '__all__'

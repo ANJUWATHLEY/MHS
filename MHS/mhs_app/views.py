@@ -245,11 +245,25 @@ def cartitem_view(request, id=None):
 
     elif request.method == 'POST':
         data = request.data
-        serializer = CartItemSerializer(data=data)
+        print('\n\n\n',data,'\n\n\n')
+        cart = data['cart']
+        obj = {
+            "cart":Cart.objects.get(pk = cart),
+            "product_id":data.get('product_id'),
+            "quantity":data.get('quantity'),
+            "cart_total":data.get('cart_total')
+        }
+
+        # print("***")
+        # print(request.data)
+
+        serializer = CartItemSerializer(data=obj)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
+            CartItem.objects.create(**obj)
+            # serializer.save()
+            print('\n\n\n', 'hello','\n\n\n')
+            return Response("Data posted successfully")
+        # return Response(serializer.errors)
 
     elif request.method == 'PUT':
         try:

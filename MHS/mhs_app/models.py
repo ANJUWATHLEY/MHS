@@ -38,15 +38,9 @@ class Order(models.Model):
 
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='cart_items' )
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product_items')
+    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product_items')
     quantity = models.IntegerField()
-    cart_total = models.IntegerField(default=0)
-
-    def save(self,*arg,**kwargs ):
-         self.cart_total=self.product.price * self.quantity
-         super().save()
+    cart_total = models.IntegerField()
 
     def __str__(self):
         return f"{self.quantity} x {self.product.product_name} in {self.cart}"
-    
-    

@@ -7,10 +7,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('customers/', Customer_view, name='customer-list'),           
-    path('customers/<int:id>/', Customer_view, name='customer-detail'), 
+    path('customers/', Customer_view, name='customer-list'),           # For GET (list) and POST requests
+    path('customers/<int:id>/', Customer_view, name='customer-detail'), # For GET (detail), PUT, PATCH, and DELETE requests
     path('products/', product_view, name='product_detail'),
-    path('products/<int:id>/', product_view, name='product_detail'), 
+    path('products/<int:id>/', product_view, name='product_detail'), # For GET (detail), PUT, PATCH, and DELETE requests
     path('order/',order_view,name="order-list"),
     path('order/<int:id>/',order_view,name="order-list"),
     path('cart/',cart_view,name="order-list"),
